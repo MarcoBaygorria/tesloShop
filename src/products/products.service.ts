@@ -4,7 +4,7 @@ import { UpdateProductDto } from './dto/update-product.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Product } from './entities/product.entity';
 import { Repository } from 'typeorm';
-import { find } from 'rxjs';
+import {validate as isUUID} from 'uuid'
 import { PaginationDto } from '../common/dtos/pagination.dto';
 
 @Injectable()
@@ -39,11 +39,25 @@ export class ProductsService {
     });
   }
 
-  async findOne(id: string) {
+  async findOne(term: string) {
 
-    const product = await this.productRepository.findOneBy({id});
-      if(!product) 
-        throw new NotFoundException(`Producto con el id ${id} no fue encontrado`)
+    //Definiendo el producto
+    let product: Product | null = null
+
+    if(isUUID(term)) {
+      product = await this.productRepository.findOneBy({id: term})
+    }else {
+      const queryBuilder = this.productRepository.createQueryBuilder();
+      product = await queryBuilder
+        .where('UPPER(title) =:title or slug=:slug', {
+          title: term.toUpperCase(),
+          slug: term.toLowerCase(),
+        }).getOne() //solo 1 de los dos.
+    }
+
+    if(!product) 
+        throw new NotFoundException(`Producto con el ${term} no fue encontrado`)
+
     return product
   }
 
