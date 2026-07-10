@@ -92,12 +92,33 @@ export class ProductsService {
     if (!product) throw new BadRequestException(`Producto con el id: ${id} no encontrado`)
     //Create query Runner
     const queryRunner = this.dataSource.createQueryRunner();
+    //Transaccion
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
     //Guardando el producto
   try {
-    await this.productRepository.save(product);
-      return product;
+    //si tenemos imagenes borrarlas todas
+    if(images){
+      await queryRunner.manager.delete(ProductImage, {product: {id}});
+      product.images = images.map(
+        image => this.productImageRepository.create({url:image})
+      )
+    } else {
+
+    }
+
+    await queryRunner.manager.save(product);
+    //await this.productRepository.save(product);
+    await queryRunner.commitTransaction();
+    await queryRunner.release();
+
+    return this.findOnePlains(id);
+    
     } catch (error: any) {
+      await queryRunner.rollbackTransaction();
+      await queryRunner.release()
+
       this.handleDBduplicateError(error)
     }
   }
