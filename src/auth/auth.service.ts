@@ -4,13 +4,17 @@ import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import * as bcrypt from 'bcrypt'
 import { LoginUserDto, CreateUserDto } from './dto';
+import { JwTPayload } from './interfaces/jwt-payload.interfaces';
+import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
 
   constructor(
     @InjectRepository(User)
-    private readonly userRepository: Repository<User>
+    private readonly userRepository: Repository<User>,
+
+    private readonly jwtService: JwtService,
   ){}
 
   async create(createUserDto: CreateUserDto) {
@@ -23,10 +27,12 @@ export class AuthService {
       password: bcrypt.hashSync(password, 10) // aplicamos bcrypt(encriptado)
     })
     await this.userRepository.save(user)
-    const {password: _, ...userWithoutPassword} = user;
-    return userWithoutPassword
+    delete user.password
 
-    return user;
+    return  {
+      ...user,
+      token: this.getJwtToken({email: user.email})
+    };
     } catch (error) {
       this.handleDBErrors(error)
     }
@@ -43,10 +49,20 @@ export class AuthService {
     if(!user)
       throw new UnauthorizedException('Credenciales no validas (email)')
 
-    if(!bcrypt.compareSync(password, user.password))
+    if(!bcrypt.compareSync(password, user.password as string))
       throw new UnauthorizedException('Credenciales no validas (password)')
 
-    return user;
+    return  {
+      ...user,
+      token: this.getJwtToken({email: user.email})
+    };
+  }
+
+  //Generar Token
+  private getJwtToken (payload: JwTPayload) {
+
+    const token = this.jwtService.sign(payload)
+    return token
   }
 
 
