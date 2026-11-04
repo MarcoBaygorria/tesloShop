@@ -1,7 +1,9 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Req } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { CreateUserDto, LoginUserDto } from './dto';
 import { AuthGuard } from '@nestjs/passport';
+import { GetUser } from './decoraters/get-user.decorater';
+import { User } from './entities/user.entity';
 
 
 @Controller('auth')
@@ -20,11 +22,13 @@ export class AuthController {
 
   @Get('private')
   @UseGuards(AuthGuard())
-  testingPrivateRoute() {
+  testingPrivateRoute(
+    @GetUser() user: User
+  ) {
     return {
       ok: true,
       message: 'Private',
-      user: {name: 'Fernando'}
+      user,
     }
   }
 }
